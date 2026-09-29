@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Порядок выполнения действий — тест</title>
+<style>
+  @font-face{
+    font-family:'Playfair';
+    src: url('PlayfairDisplay-VariableFont_wght.ttf') format('truetype-variations'),
+         url('PlayfairDisplay-VariableFont_wght.ttf') format('truetype');
+    font-weight:200 900;
+    font-display:swap;
+  }
+
+  :root{
+    --cream:#FFFCF7;
+    --paper:#FFFFFF;
+    --ink:#2A3A54;
+    --ink-soft:#5F6E8C;
+    --line:#EAE8F3;
+    --blue:#3E7BFA;
+    --blue-deep:#2756B5;
+    --green:#3DA673;
+    --green-deep:#1F7A4C;
+    --orange:#F09B3D;
+    --orange-deep:#B8701E;
+    --pink:#E06B9C;
+    --purple:#7F6BE0;
+    --red:#E05A4E;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;overflow:hidden;}
+  body{
+    font-family:'Segoe UI','Nunito',system-ui,sans-serif;
+    color:var(--ink);
+    background:linear-gradient(160deg,#FFFCF7 0%,#F3F5FF 55%,#E9F5EE 100%);
+    -webkit-font-smoothing:antialiased;
+    font-weight:500;
+  }
+
+  .math-bg{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;}
+  .math-bg svg{display:block;}
+  .math-bg .num{position:absolute;font-family:'Playfair',Georgia,serif;font-weight:900;line-height:1;user-select:none;}
+  .math-bg .n0{left:2%;top:6%;font-size:120px;color:rgba(127,107,224,.09);}
+  .math-bg .n1{left:92%;top:12%;font-size:90px;color:rgba(240,155,61,.1);}
+  .math-bg .n2{left:8%;top:78%;font-size:110px;color:rgba(61,166,115,.09);}
+  .math-bg .n3{left:87%;top:76%;font-size:130px;color:rgba(224,107,156,.08);}
+  .math-bg .n4{left:45%;top:3%;font-size:70px;color:rgba(62,123,250,.08);}
+  .math-bg .n5{left:52%;top:88%;font-size:80px;color:rgba(127,107,224,.08);}
+  .math-bg .n6{left:22%;top:44%;font-size:60px;color:rgba(240,155,61,.08);}
+  .math-bg .n7{left:73%;top:48%;font-size:55px;color:rgba(62,123,250,.08);}
+
+  .math-bg .sign{position:absolute;font-family:'Playfair',Georgia,serif;font-weight:900;line-height:1;user-select:none;}
+  .math-bg .s1{left:18%;top:20%;font-size:78px;color:rgba(224,90,78,.09);}
+  .math-bg .s2{left:75%;top:32%;font-size:66px;color:rgba(61,166,115,.1);}
+  .math-bg .s3{left:36%;top:70%;font-size:72px;color:rgba(62,123,250,.09);}
+  .math-bg .s4{left:60%;top:18%;font-size:64px;color:rgba(127,107,224,.1);}
+  .math-bg .s5{left:5%;top:52%;font-size:58px;color:rgba(240,155,61,.1);}
+  .math-bg .s6{left:88%;top:58%;font-size:70px;color:rgba(224,107,156,.09);}
+
+  .math-bg .ruler{position:absolute;opacity:.13;}
+  .math-bg .r1{left:-20px;top:34%;transform:rotate(-18deg);}
+  .math-bg .r2{right:-20px;top:52%;transform:rotate(14deg) scaleX(-1);}
+
+  .math-bg .tri{position:absolute;opacity:.13;}
+  .math-bg .t1{left:14%;top:8%;}
+  .math-bg .t2{left:82%;top:82%;}
+  .math-bg .t3{left:50%;top:52%;}
+  .math-bg .t4{left:34%;top:28%;}
+
+  .math-bg .sq{position:absolute;opacity:.13;}
+  .math-bg .q1{left:66%;top:62%;}
+  .math-bg .q2{left:4%;top:30%;}
+  .math-bg .q3{left:90%;top:38%;}
+
+  .stage{position:relative;z-index:1;width:100vw;height:100vh;display:flex;align-items:stretch;justify-content:center;overflow:hidden;}
+  .slide{
+    position:absolute;inset:0;
+    padding:clamp(60px,6vmin,90px) clamp(30px,5vmin,70px) clamp(24px,3.4vmin,44px);
+    display:none;flex-direction:column;
+    overflow-y:auto;overflow-x:hidden;
+    animation:fadeIn .5s cubic-bezier(.2,.9,.3,1.2);
+    min-height:0;
+  }
+  .slide.active{display:flex;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+  .slide::-webkit-scrollbar{width:8px;}
+  .slide::-webkit-scrollbar-thumb{background:rgba(62,123,250,.28);border-radius:10px;}
+
+  .topbar{
+    position:fixed;top:0;left:0;right:0;
+    display:none;
+    align-items:center;justify-content:space-between;
+    padding:clamp(8px,1.4vmin,16px) clamp(20px,3.4vmin,48px);
+    z-index:98;
+    background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.75));
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border-bottom:2px solid rgba(62,123,250,.1);
+    gap:clamp(10px,2vmin,24px);
+    flex-wrap:wrap;
+  }
+  .topbar.show{display:flex;}
+  .q-counter{
+    font-size:clamp(13px,1.8vmin,18px);font-weight:900;color:var(--blue-deep);
+    background:linear-gradient(135deg,#E8F0FF,#D6E3F7);
+    padding:clamp(4px,.8vmin,9px) clamp(10px,1.8vmin,18px);
+    border-radius:999px;border:2px solid rgba(62,123,250,.22);
+    white-space:nowrap;
+  }
+  .timer{
+    display:inline-flex;align-items:center;gap:clamp(5px,.9vmin,10px);
+    font-size:clamp(13px,1.8vmin,18px);font-weight:900;color:#8a1e12;
+    background:linear-gradient(135deg,#FFE9E5,#FCD8D2);
+    padding:clamp(4px,.8vmin,9px) clamp(10px,1.8vmin,18px);
+    border-radius:999px;border:2px solid rgba(224,90,78,.25);
+    white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:.5px;
+  }
+  .progress-mini{
+    flex:1;height:clamp(6px,1vmin,10px);
+    background:rgba(62,123,250,.1);border-radius:999px;
+    overflow:hidden;box-shadow:inset 0 0 0 1px rgba(62,123,250,.08);
+    min-width:80px;
+  }
+  .progress-mini > i{
+    display:block;height:100%;width:0%;
+    background:linear-gradient(90deg,#3E7BFA,#7F6BE0,#F09B3D);
+    border-radius:999px;transition:width .45s ease;
+    box-shadow:0 0 12px rgba(62,123,250,.5);
+  }
+
+  .title-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(12px,2.4vmin,28px);min-height:0;}
+  .title-main{
+    font-size:clamp(28px,5.4vmin,72px);font-weight:900;line-height:1.12;
+    background:linear-gradient(135deg,#2756B5 0%, #3E7BFA 45%, #7F6BE0 100%);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .title-sub{font-size:clamp(13px,1.8vmin,21px);color:var(--ink-soft);max-width:min(720px,92%);line-height:1.55;}
+  .title-symbols{display:flex;gap:clamp(14px,2.4vmin,32px);font-size:clamp(38px,6vmin,74px);line-height:1;font-weight:900;}
+  .title-symbols span{display:inline-block;color:var(--blue);filter:drop-shadow(0 10px 22px rgba(62,123,250,.22));}
+  .title-symbols span:nth-child(2){color:var(--purple);}
+  .title-symbols span:nth-child(3){color:var(--orange);}
+  .title-symbols span:nth-child(4){color:var(--green);}
+
+  .game-area{
+    flex:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:clamp(12px,1.8vmin,22px);
+    min-height:0;
+  }
+  .game-counter{
+    text-align:center;
+    font-size:clamp(12px,1.5vmin,16px);
+    color:var(--ink-soft);
+    font-weight:900;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    background:rgba(255,255,255,.7);
+    padding:clamp(5px,.9vmin,9px) clamp(14px,2.2vmin,22px);
+    border-radius:999px;
+    border:2px solid rgba(62,123,250,.15);
+  }
+  .game-expr{
+    text-align:center;
+    font-family:'Courier New',monospace;
+    font-weight:900;
+    font-size:clamp(26px,4.8vmin,58px);
+    letter-spacing:2.5px;
+    padding:clamp(20px,3vmin,40px) clamp(14px,2.4vmin,28px);
+    background:linear-gradient(135deg,#FFFCF5,#FFF2DC);
+    border-radius:clamp(16px,2.4vmin,26px);
+    border:3px solid rgba(240,155,61,.32);
+    color:var(--ink);
+    box-shadow:0 14px 34px rgba(240,155,61,.16);
+    overflow:visible;
+    width:min(1080px,96%);
+    max-width:1080px;
+  }
+  .game-expr .op-target{
+    display:inline-block;position:relative;
+    padding:0 clamp(5px,.9vmin,9px);margin:0 3px;
+    border-radius:10px;cursor:pointer;
+    transition:background .2s ease, color .2s ease, border-color .2s ease;
+    border:2.5px dashed transparent;color:var(--ink);
+    -webkit-user-select:none;user-select:none;
+  }
+  .game-expr .op-target:hover:not([class*="marked-"]){background:rgba(240,155,61,.15);border-color:rgba(240,155,61,.5);}
+  .game-expr .op-target.marked-1{background:linear-gradient(135deg,#FFC857,#FFB627);color:#7a4a10;border:2.5px solid #B8701E;}
+  .game-expr .op-target.marked-2{background:linear-gradient(135deg,#7F6BE0,#A78BFF);color:#fff;border:2.5px solid #5A3EB5;}
+  .game-expr .op-target.marked-3{background:linear-gradient(135deg,#3E7BFA,#7CA3EF);color:#fff;border:2.5px solid #2756B5;}
+  .game-expr .op-target.marked-4{background:linear-gradient(135deg,#3DA673,#7CCFA0);color:#fff;border:2.5px solid #1F7A4C;}
+  .game-expr .op-target.just-marked{animation:popCorrect .6s cubic-bezier(.2,.9,.3,1.6);}
+  .game-expr .op-target .badge-num{
+    position:absolute;top:-16px;right:-10px;
+    background:#fff;color:var(--ink);border:2px solid var(--ink);
+    width:24px;height:24px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:900;
+    box-shadow:0 3px 8px rgba(0,0,0,.18);
+    z-index:2;font-family:'Segoe UI',sans-serif;
+  }
+  .game-expr .op-target.wrong-shake{animation:shake .5s;background:rgba(224,90,78,.25);border-color:rgba(224,90,78,.6);}
+  .game-expr.locked .op-target{cursor:default;}
+  .game-expr.locked .op-target:hover{background:inherit;border-color:inherit;}
+  .game-expr.locked .op-target.marked-1:hover{background:linear-gradient(135deg,#FFC857,#FFB627);}
+  .game-expr.locked .op-target.marked-2:hover{background:linear-gradient(135deg,#7F6BE0,#A78BFF);}
+  .game-expr.locked .op-target.marked-3:hover{background:linear-gradient(135deg,#3E7BFA,#7CA3EF);}
+  .game-expr.locked .op-target.marked-4:hover{background:linear-gradient(135deg,#3DA673,#7CCFA0);}
+
+  .game-hint{
+    text-align:center;font-size:clamp(12px,1.6vmin,17px);font-weight:800;
+    color:var(--ink-soft);padding:clamp(6px,1vmin,12px) clamp(14px,2vmin,22px);
+    border-radius:14px;background:rgba(255,255,255,.8);
+    transition:all .3s ease;
+    min-height:calc(1.6em + 12px);
+    display:flex;align-items:center;justify-content:center;
+    max-width:min(700px,92%);
+  }
+  .game-hint.ok{color:var(--green-deep);background:linear-gradient(135deg,#E8F5DF,#D6ECC0);font-weight:900;}
+  .game-hint.err{color:#8B1E12;background:linear-gradient(135deg,#FCE4E0,#F8C4B8);}
+
+  .game-progress{
+    display:flex;align-items:center;justify-content:center;
+    gap:6px;flex-wrap:wrap;max-width:min(720px,94%);
+    padding:clamp(6px,1vmin,10px) clamp(14px,2vmin,22px);
+    background:rgba(255,255,255,.7);
+    border-radius:999px;
+    border:2px solid rgba(62,123,250,.15);
+  }
+  .game-progress .pdot{width:9px;height:9px;border-radius:50%;background:#D6D9E8;transition:all .3s;}
+  .game-progress .pdot.done{background:var(--green);transform:scale(1.15);}
+  .game-progress .pdot.cur{background:linear-gradient(135deg,#3E7BFA,#7F6BE0);transform:scale(1.4);box-shadow:0 0 0 3px rgba(62,123,250,.2);}
+
+  .btn{
+    font-family:inherit;font-size:clamp(13px,1.7vmin,18px);font-weight:900;
+    padding:clamp(10px,1.5vmin,15px) clamp(26px,3.6vmin,46px);
+    border:none;border-radius:999px;cursor:pointer;
+    background:linear-gradient(135deg,#3E7BFA,#7F6BE0);
+    color:#fff;
+    box-shadow:0 10px 24px rgba(62,123,250,.35), inset 0 1px 0 rgba(255,255,255,.35);
+    letter-spacing:.5px;
+    transition:transform .18s, box-shadow .2s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn:hover:not(:disabled){transform:translateY(-3px);box-shadow:0 14px 32px rgba(62,123,250,.5);}
+  .btn:active:not(:disabled){transform:translateY(0) scale(.97);}
+  .btn.green{background:linear-gradient(135deg,#3DA673,#7CCFA0);box-shadow:0 10px 24px rgba(61,166,115,.35);}
+
+  .name-wrap{
+    flex:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:clamp(16px,2.4vmin,30px);
+    text-align:center;min-height:0;
+    width:100%;max-width:min(700px,92%);
+    margin:0 auto;
+  }
+  .name-title{
+    font-size:clamp(24px,3.6vmin,44px);font-weight:900;
+    background:linear-gradient(135deg,#2756B5,#7F6BE0);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .name-input{
+    width:min(520px,90%);
+    padding:clamp(14px,2vmin,22px) clamp(18px,2.6vmin,28px);
+    font-family:inherit;font-size:clamp(18px,2.4vmin,26px);font-weight:800;
+    text-align:center;
+    border:3px solid rgba(62,123,250,.3);
+    border-radius:clamp(14px,2vmin,20px);
+    background:#fff;color:var(--blue-deep);
+    outline:none;transition:all .22s;
+    box-shadow:0 10px 24px rgba(62,123,250,.1);
+  }
+  .name-input:focus{
+    border-color:var(--blue);
+    box-shadow:0 0 0 6px rgba(62,123,250,.15), 0 10px 24px rgba(62,123,250,.18);
+  }
+
+  .result-wrap{
+    flex:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    gap:clamp(12px,1.8vmin,20px);
+    text-align:center;min-height:0;
+  }
+  .result-emoji{
+    font-size:clamp(70px,11vmin,130px);line-height:1;
+    animation:bounceIn 1s cubic-bezier(.2,.9,.3,1.6);
+    filter:drop-shadow(0 14px 32px rgba(62,123,250,.32));
+  }
+  @keyframes bounceIn{
+    0%{transform:scale(0) rotate(-25deg);opacity:0;}
+    60%{transform:scale(1.15) rotate(8deg);opacity:1;}
+    100%{transform:scale(1) rotate(0);}
+  }
+  .result-title{
+    font-size:clamp(24px,3.6vmin,44px);font-weight:900;
+    background:linear-gradient(135deg,#2756B5,#7F6BE0);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .result-name{font-size:clamp(14px,1.9vmin,20px);color:var(--ink-soft);font-weight:700;}
+  .result-name b{color:var(--blue-deep);font-weight:900;}
+  .result-stats{display:flex;flex-wrap:wrap;gap:clamp(10px,1.6vmin,20px);justify-content:center;margin:clamp(4px,.8vmin,10px) 0;}
+  .stat-card{
+    min-width:clamp(140px,18vmin,190px);
+    padding:clamp(14px,2vmin,22px) clamp(16px,2.2vmin,26px);
+    border-radius:clamp(14px,2vmin,20px);
+    background:linear-gradient(160deg,#FFFFFF,#E8F0FF);
+    border:2.5px solid rgba(62,123,250,.2);
+    box-shadow:0 12px 30px rgba(62,123,250,.12);
+    text-align:center;
+  }
+  .stat-card.red{background:linear-gradient(160deg,#FFFFFF,#FFE3DE);border-color:rgba(224,90,78,.22);}
+  .stat-card .lbl{
+    font-size:clamp(10px,1.3vmin,13px);
+    letter-spacing:1.5px;text-transform:uppercase;
+    font-weight:800;color:var(--ink-soft);margin-bottom:6px;
+  }
+  .stat-card .val{
+    font-size:clamp(28px,4.4vmin,50px);font-weight:900;line-height:1;
+    font-variant-numeric:tabular-nums;
+    background:linear-gradient(135deg,#3E7BFA,#7F6BE0);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .stat-card.red .val{
+    background:linear-gradient(135deg,#E05A4E,#FF8C7A);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .stat-card .unit{font-size:.5em;color:var(--ink-soft);font-weight:800;margin-left:2px;-webkit-text-fill-color:var(--ink-soft);}
+  .result-msg{
+    font-size:clamp(14px,1.8vmin,19px);color:var(--ink-soft);font-weight:700;
+    max-width:min(640px,92%);line-height:1.55;
+    padding:clamp(10px,1.5vmin,18px) clamp(16px,2.2vmin,26px);
+    border-radius:clamp(12px,1.8vmin,18px);
+    background:linear-gradient(135deg,#F0F5FF,#DDE8FA);
+    border:2px dashed rgba(62,123,250,.28);
+  }
+  .result-actions{display:flex;gap:clamp(8px,1.4vmin,16px);margin-top:clamp(6px,1vmin,14px);flex-wrap:wrap;justify-content:center;}
+
+  @keyframes popCorrect{0%{transform:scale(1);}35%{transform:scale(1.1);}60%{transform:scale(.97);}100%{transform:scale(1);}}
+  @keyframes shake{
+    10%,90%{transform:translateX(-3px);}
+    20%,80%{transform:translateX(5px);}
+    30%,50%,70%{transform:translateX(-8px);}
+    40%,60%{transform:translateX(8px);}
+  }
+
+  .confetti{
+    position:fixed;width:12px;height:12px;
+    pointer-events:none;z-index:2147483647;
+    animation:confettiFall var(--dur) cubic-bezier(.2,.7,.3,1) forwards;
+    will-change:transform,opacity;
+  }
+  @keyframes confettiFall{
+    0%{transform:translate(-50%,-50%) rotate(0) scale(1);opacity:1;}
+    100%{
+      transform:
+        translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
+        rotate(var(--rot)) scale(.4);
+      opacity:0;
+    }
+  }
+
+  @media (max-height:640px){.slide{padding:52px 30px 20px;}}
+</style>
+</head>
+<body>
+
+<div class="math-bg">
+  <span class="num n0">0</span>
+  <span class="num n1">1</span>
+  <span class="num n2">2</span>
+  <span class="num n3">3</span>
+  <span class="num n4">4</span>
+  <span class="num n5">5</span>
+  <span class="num n6">7</span>
+  <span class="num n7">9</span>
+
+  <span class="sign s1">+</span>
+  <span class="sign s2">−</span>
+  <span class="sign s3">∙</span>
+  <span class="sign s4">:</span>
+  <span class="sign s5">=</span>
+  <span class="sign s6">%</span>
+
+  <svg class="ruler r1" width="360" height="34" viewBox="0 0 360 34" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="0" width="360" height="34" rx="5" fill="#F0A64A"/>
+    <g stroke="#7a4a10" stroke-width="1.5">
+      <line x1="0" y1="0" x2="0" y2="20"/><line x1="20" y1="0" x2="20" y2="10"/>
+      <line x1="40" y1="0" x2="40" y2="20"/><line x1="60" y1="0" x2="60" y2="10"/>
+      <line x1="80" y1="0" x2="80" y2="20"/><line x1="100" y1="0" x2="100" y2="10"/>
+      <line x1="120" y1="0" x2="120" y2="20"/><line x1="140" y1="0" x2="140" y2="10"/>
+      <line x1="160" y1="0" x2="160" y2="20"/><line x1="180" y1="0" x2="180" y2="10"/>
+      <line x1="200" y1="0" x2="200" y2="20"/><line x1="220" y1="0" x2="220" y2="10"/>
+      <line x1="240" y1="0" x2="240" y2="20"/><line x1="260" y1="0" x2="260" y2="10"/>
+      <line x1="280" y1="0" x2="280" y2="20"/><line x1="300" y1="0" x2="300" y2="10"/>
+      <line x1="320" y1="0" x2="320" y2="20"/><line x1="340" y1="0" x2="340" y2="10"/>
+    </g>
+  </svg>
+
+  <svg class="ruler r2" width="320" height="30" viewBox="0 0 320 30" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="0" width="320" height="30" rx="5" fill="#3E7BFA"/>
+    <g stroke="#1e3a7a" stroke-width="1.4">
+      <line x1="0" y1="0" x2="0" y2="18"/><line x1="20" y1="0" x2="20" y2="9"/>
+      <line x1="40" y1="0" x2="40" y2="18"/><line x1="60" y1="0" x2="60" y2="9"/>
+      <line x1="80" y1="0" x2="80" y2="18"/><line x1="100" y1="0" x2="100" y2="9"/>
+      <line x1="120" y1="0" x2="120" y2="18"/><line x1="140" y1="0" x2="140" y2="9"/>
+      <line x1="160" y1="0" x2="160" y2="18"/><line x1="180" y1="0" x2="180" y2="9"/>
+      <line x1="200" y1="0" x2="200" y2="18"/><line x1="220" y1="0" x2="220" y2="9"/>
+      <line x1="240" y1="0" x2="240" y2="18"/><line x1="260" y1="0" x2="260" y2="9"/>
+      <line x1="280" y1="0" x2="280" y2="18"/><line x1="300" y1="0" x2="300" y2="9"/>
+    </g>
+  </svg>
+
+  <svg class="tri t1" width="90" height="80" viewBox="0 0 90 80" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="45,5 85,75 5,75" fill="none" stroke="#7F6BE0" stroke-width="3"/>
+  </svg>
+  <svg class="tri t2" width="110" height="100" viewBox="0 0 110 100" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="55,5 105,95 5,95" fill="#3DA673" opacity=".7"/>
+  </svg>
+  <svg class="tri t3" width="80" height="70" viewBox="0 0 80 70" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="40,5 75,65 5,65" fill="none" stroke="#E06B9C" stroke-width="3"/>
+  </svg>
+  <svg class="tri t4" width="70" height="60" viewBox="0 0 70 60" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="35,5 65,55 5,55" fill="#F09B3D" opacity=".6"/>
+  </svg>
+
+  <svg class="sq q1" width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5" y="5" width="50" height="50" rx="5" fill="none" stroke="#3E7BFA" stroke-width="3"/>
+  </svg>
+  <svg class="sq q2" width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="30,5 55,30 30,55 5,30" fill="#E06B9C" opacity=".55"/>
+  </svg>
+  <svg class="sq q3" width="70" height="70" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">
+    <rect x="8" y="8" width="54" height="54" fill="#7F6BE0" opacity=".5"/>
+  </svg>
+</div>
+
+<div class="topbar" id="topbar">
+  <span class="q-counter" id="qCounter">Вопрос 1 из 14</span>
+  <span class="timer" id="timerText">00:00</span>
+  <div class="progress-mini"><i id="progressMini"></i></div>
+</div>
+
+<div class="stage" id="stage">
+
+  <section class="slide active" id="slide-start">
+    <div class="title-wrap">
+      <div class="title-symbols"><span>+</span><span>∙</span><span>:</span><span>−</span></div>
+      <h1 class="title-main">Порядок действий<br>в числовых выражениях</h1>
+      <p class="title-sub">14 выражений · нажимай на знаки в правильном порядке</p>
+      <button class="btn" onclick="startTest()">Начать →</button>
+    </div>
+  </section>
+
+  <section class="slide" id="slide-game">
+    <div class="game-area">
+      <div class="game-counter" id="gameCounter">Выражение 1 из 14</div>
+      <div class="game-expr" id="gameExpr"></div>
+      <div class="game-hint" id="gameHint">Нажми на знак, который нужно выполнить первым</div>
+      <div class="game-progress" id="gameProgress"></div>
+    </div>
+  </section>
+
+  <section class="slide" id="slide-name">
+    <div class="name-wrap">
+      <h2 class="name-title">Как тебя зовут?</h2>
+      <input class="name-input" id="nameInput" type="text" maxlength="40" autocomplete="off">
+      <button class="btn" onclick="submitName()">Показать результат →</button>
+    </div>
+  </section>
+
+  <section class="slide" id="slide-result">
+    <div class="result-wrap">
+      <div class="result-emoji" id="resEmoji">🏆</div>
+      <h2 class="result-title" id="resTitle">Тест завершён!</h2>
+      <p class="result-name" id="resName"></p>
+
+      <div class="result-stats">
+        <div class="stat-card">
+          <div class="lbl">Верно</div>
+          <div class="val"><span id="resScore">0</span><span class="unit">/14</span></div>
+        </div>
+        <div class="stat-card red">
+          <div class="lbl">Время</div>
+          <div class="val" id="resTime">00:00</div>
+        </div>
+      </div>
+
+      <p class="result-msg" id="resMsg"></p>
+
+      <div class="result-actions">
+        <button class="btn" onclick="restart()">Пройти заново</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  /* ============================================================
+     14 ВЫРАЖЕНИЙ — У КАЖДОГО РОВНО 3 ЗНАКА ДЕЙСТВИЯ
+     Используется умножение ∙ и деление : , а также скобки
+     ============================================================ */
+  const GAME_TASKS = [
+    // 1. 12 + 8 : 4 ∙ 3  →  сначала : и ∙ слева направо, потом +
+    { parts: ['12 ', '+', ' 8 ', ':', ' 4 ', '∙', ' 3'],
+      ops: [{sign:'+',idx:1},{sign:':',idx:3},{sign:'∙',idx:5}],
+      order: [3, 5, 1] },
+
+    // 2. 20 − 4 ∙ 3 : 2  →  сначала ∙ и : слева направо, потом −
+    { parts: ['20 ', '−', ' 4 ', '∙', ' 3 ', ':', ' 2'],
+      ops: [{sign:'−',idx:1},{sign:'∙',idx:3},{sign:':',idx:5}],
+      order: [3, 5, 1] },
+
+    // 3. 5 ∙ (6 − 2) + 3  →  скобки −, потом ∙, потом +
+    { parts: ['5 ', '∙', ' (6 ', '−', ' 2) ', '+', ' 3'],
+      ops: [{sign:'∙',idx:1},{sign:'−',idx:3},{sign:'+',idx:5}],
+      order: [3, 1, 5] },
+
+    // 4. 30 : (5 + 1) − 2  →  скобки +, потом :, потом −
+    { parts: ['30 ', ':', ' (5 ', '+', ' 1) ', '−', ' 2'],
+      ops: [{sign:':',idx:1},{sign:'+',idx:3},{sign:'−',idx:5}],
+      order: [3, 1, 5] },
+
+    // 5. (7 ∙ 2 + 18) : 3  →  в скобках ∙, потом +, потом :
+    { parts: ['(7 ', '∙', ' 2 ', '+', ' 18) ', ':', ' 3'],
+      ops: [{sign:'∙',idx:1},{sign:'+',idx:3},{sign:':',idx:5}],
+      order: [1, 3, 5] },
+
+    // 6. 100 − (24 : 4) ∙ 3  →  скобки :, потом ∙, потом −
+    { parts: ['100 ', '−', ' (24 ', ':', ' 4) ', '∙', ' 3'],
+      ops: [{sign:'−',idx:1},{sign:':',idx:3},{sign:'∙',idx:5}],
+      order: [3, 5, 1] },
+
+    // 7. 15 + 6 : 3 ∙ 2  →  сначала : и ∙ слева направо, потом +
+    { parts: ['15 ', '+', ' 6 ', ':', ' 3 ', '∙', ' 2'],
+      ops: [{sign:'+',idx:1},{sign:':',idx:3},{sign:'∙',idx:5}],
+      order: [3, 5, 1] },
+
+    // 8. 9 ∙ (4 + 2) : 3  →  скобки +, потом ∙ и : слева направо
+    { parts: ['9 ', '∙', ' (4 ', '+', ' 2) ', ':', ' 3'],
+      ops: [{sign:'∙',idx:1},{sign:'+',idx:3},{sign:':',idx:5}],
+      order: [3, 1, 5] },
+
+    // 9. (48 : 6 + 3) ∙ 2  →  в скобках : и +, потом ∙
+    { parts: ['(48 ', ':', ' 6 ', '+', ' 3) ', '∙', ' 2'],
+      ops: [{sign:':',idx:1},{sign:'+',idx:3},{sign:'∙',idx:5}],
+      order: [1, 3, 5] },
+
+    // 10. 10 + (8 − 3) ∙ 4  →  скобки −, потом ∙, потом +
+    { parts: ['10 ', '+', ' (8 ', '−', ' 3) ', '∙', ' 4'],
+      ops: [{sign:'+',idx:1},{sign:'−',idx:3},{sign:'∙',idx:5}],
+      order: [3, 5, 1] },
+
+    // 11. 72 : (8 + 1) : 2  →  скобки +, потом : и : слева направо
+    { parts: ['72 ', ':', ' (8 ', '+', ' 1) ', ':', ' 2'],
+      ops: [{sign:':',idx:1},{sign:'+',idx:3},{sign:':',idx:5}],
+      order: [3, 1, 5] },
+
+    // 12. 6 ∙ 4 − 15 : 3  →  сначала ∙ и : слева направо, потом −
+    { parts: ['6 ', '∙', ' 4 ', '−', ' 15 ', ':', ' 3'],
+      ops: [{sign:'∙',idx:1},{sign:'−',idx:3},{sign:':',idx:5}],
+      order: [1, 5, 3] },
+
+    // 13. (12 + 8) : 5 + 7  →  скобки +, потом :, потом +
+    { parts: ['(12 ', '+', ' 8) ', ':', ' 5 ', '+', ' 7'],
+      ops: [{sign:'+',idx:1},{sign:':',idx:3},{sign:'+',idx:5}],
+      order: [1, 3, 5] },
+
+    // 14. 25 − (3 + 2) ∙ 4  →  скобки +, потом ∙, потом −
+    { parts: ['25 ', '−', ' (3 ', '+', ' 2) ', '∙', ' 4'],
+      ops: [{sign:'−',idx:1},{sign:'+',idx:3},{sign:'∙',idx:5}],
+      order: [3, 5, 1] }
+  ];
+
+  const TOTAL_Q = GAME_TASKS.length;
+
+  const slides = document.querySelectorAll('.slide');
+  const startSlide = document.getElementById('slide-start');
+  const gameSlide = document.getElementById('slide-game');
+  const nameSlide = document.getElementById('slide-name');
+  const resultSlide = document.getElementById('slide-result');
+
+  const topbar = document.getElementById('topbar');
+  const qCounter = document.getElementById('qCounter');
+  const timerText = document.getElementById('timerText');
+  const progressMini = document.getElementById('progressMini');
+
+  const gameExpr = document.getElementById('gameExpr');
+  const gameHint = document.getElementById('gameHint');
+  const gameProgress = document.getElementById('gameProgress');
+  const gameCounter = document.getElementById('gameCounter');
+
+  let gameIdx = 0;
+  let gameMarks = [];
+  let gameLocked = false;
+  let expressionHadMistake = false;
+  let score = 0;
+  let startTime = 0;
+  let timerId = null;
+  let userName = '';
+
+  function formatTime(ms){
+    const total = Math.floor(ms / 1000);
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+  function tickTimer(){
+    if (!startTime) return;
+    timerText.textContent = formatTime(Date.now() - startTime);
+  }
+  function startTimer(){
+    startTime = Date.now();
+    timerText.textContent = '00:00';
+    if (timerId) clearInterval(timerId);
+    timerId = setInterval(tickTimer, 500);
+  }
+  function stopTimer(){
+    if (timerId){ clearInterval(timerId); timerId = null; }
+  }
+
+  function showSlide(el){
+    slides.forEach(s => s.classList.remove('active'));
+    el.classList.add('active');
+    el.scrollTop = 0;
+  }
+
+  function startTest(){
+    gameIdx = 0;
+    score = 0;
+    userName = '';
+    gameMarks = [];
+    gameLocked = false;
+    expressionHadMistake = false;
+
+    startTimer();
+    topbar.classList.add('show');
+    showSlide(gameSlide);
+    renderGame();
+  }
+
+  function renderGame(){
+    gameMarks = [];
+    gameLocked = false;
+    expressionHadMistake = false;
+    gameExpr.classList.remove('locked');
+    renderExpr();
+
+    gameHint.className = 'game-hint';
+    gameHint.textContent = 'Нажми на знак, который нужно выполнить первым';
+
+    renderProgress();
+
+    qCounter.textContent = 'Вопрос ' + (gameIdx + 1) + ' из ' + TOTAL_Q;
+    gameCounter.textContent = 'Выражение ' + (gameIdx + 1) + ' из ' + TOTAL_Q;
+    progressMini.style.width = (gameIdx / TOTAL_Q * 100) + '%';
+    tickTimer();
+  }
+
+  function renderExpr(newIdx){
+    const t = GAME_TASKS[gameIdx];
+    let html = '';
+    t.parts.forEach((p, i) => {
+      if (t.ops.find(o => o.idx === i)){
+        const mark = gameMarks.find(m => m.idx === i);
+        const cls = mark ? ` marked-${mark.step}` : '';
+        const badge = mark ? `<span class="badge-num">${mark.step}</span>` : '';
+        html += `<span class="op-target${cls}" data-idx="${i}" onclick="gameClick(this)">${p}${badge}</span>`;
+      } else {
+        html += p;
+      }
+    });
+    gameExpr.innerHTML = html;
+
+    if (newIdx !== undefined){
+      const el = gameExpr.querySelector(`.op-target[data-idx="${newIdx}"]`);
+      if (el){
+        el.classList.add('just-marked');
+        setTimeout(() => el.classList.remove('just-marked'), 700);
+      }
+    }
+  }
+
+  function renderProgress(){
+    gameProgress.innerHTML = '';
+    GAME_TASKS.forEach((_, i) => {
+      const d = document.createElement('span');
+      d.className = 'pdot';
+      if (i < gameIdx) d.classList.add('done');
+      else if (i === gameIdx) d.classList.add('cur');
+      gameProgress.appendChild(d);
+    });
+  }
+
+  window.gameClick = function(el){
+    if (gameLocked) return;
+    const t = GAME_TASKS[gameIdx];
+    const idx = Number(el.dataset.idx);
+
+    if (gameMarks.find(m => m.idx === idx)) return;
+
+    const expectedIdx = t.order[gameMarks.length];
+    if (idx !== expectedIdx){
+      el.classList.add('wrong-shake');
+      gameHint.className = 'game-hint err';
+      gameHint.textContent = 'Не сейчас. Подумай, какое действие по правилам должно быть раньше.';
+      setTimeout(() => el.classList.remove('wrong-shake'), 500);
+      expressionHadMistake = true;
+      return;
+    }
+
+    gameMarks.push({ idx: idx, step: gameMarks.length + 1 });
+    renderExpr(idx);
+
+    const el2 = gameExpr.querySelector(`.op-target[data-idx="${idx}"]`);
+    if (el2){
+      const r = el2.getBoundingClientRect();
+      burstConfetti(r.left + r.width/2, r.top + r.height/2, 14);
+    }
+
+    if (gameMarks.length === t.order.length){
+      gameLocked = true;
+      gameExpr.classList.add('locked');
+      if (!expressionHadMistake){
+        score++;
+      }
+      gameHint.className = 'game-hint ok';
+      gameHint.textContent = 'Верно! Порядок действий расставлен правильно.';
+      const rect = gameExpr.getBoundingClientRect();
+      setTimeout(() => {
+        burstConfetti(rect.left + rect.width/2, rect.top + rect.height/2, 50);
+      }, 200);
+      progressMini.style.width = ((gameIdx + 1) / TOTAL_Q * 100) + '%';
+
+      setTimeout(() => {
+        if (gameIdx < TOTAL_Q - 1){
+          gameIdx++;
+          renderGame();
+        } else {
+          finishTest();
+        }
+      }, 900);
+    } else {
+      gameHint.className = 'game-hint ok';
+      gameHint.textContent = 'Верно! Теперь выбери следующее действие.';
+    }
+  };
+
+  function finishTest(){
+    stopTimer();
+    topbar.classList.remove('show');
+    showSlide(nameSlide);
+    setTimeout(() => document.getElementById('nameInput').focus(), 250);
+  }
+
+  function submitName(){
+    const inp = document.getElementById('nameInput');
+    const v = inp.value.trim();
+    if (!v){ inp.focus(); return; }
+    userName = v;
+    showResult();
+  }
+  document.getElementById('nameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); submitName(); }
+  });
+
+  function showResult(){
+    const elapsed = Date.now() - startTime;
+    const timeStr = formatTime(elapsed);
+
+    document.getElementById('resName').innerHTML = 'Ученик: <b>' + escapeHtml(userName) + '</b>';
+    document.getElementById('resScore').textContent = score;
+    document.getElementById('resTime').textContent = timeStr;
+
+    const emoji = document.getElementById('resEmoji');
+    const title = document.getElementById('resTitle');
+    const msg = document.getElementById('resMsg');
+
+    const pct = score / TOTAL_Q;
+    if (score === TOTAL_Q){
+      emoji.textContent = '🏆';
+      title.textContent = 'Превосходно!';
+      msg.textContent = 'Все 14 выражений решены без единой ошибки!';
+    } else if (pct >= 0.8){
+      emoji.textContent = '🌟';
+      title.textContent = 'Отличный результат!';
+      msg.textContent = 'Почти все выражения выполнены без ошибок.';
+    } else if (pct >= 0.6){
+      emoji.textContent = '🎯';
+      title.textContent = 'Хороший результат!';
+      msg.textContent = 'Ты справился с большинством выражений. Повтори правило — и будет отлично.';
+    } else if (pct >= 0.4){
+      emoji.textContent = '📘';
+      title.textContent = 'Неплохо!';
+      msg.textContent = 'Есть над чем поработать. Повтори порядок действий.';
+    } else {
+      emoji.textContent = '📖';
+      title.textContent = 'Попробуй ещё раз';
+      msg.textContent = 'Не расстраивайся! Повтори правило и пройди тест снова.';
+    }
+
+    showSlide(resultSlide);
+    setTimeout(() => {
+      burstConfetti(window.innerWidth/2, window.innerHeight/2, 90);
+      setTimeout(() => {
+        burstConfetti(window.innerWidth*0.25, window.innerHeight*0.4, 40);
+        burstConfetti(window.innerWidth*0.75, window.innerHeight*0.4, 40);
+      }, 300);
+    }, 200);
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  function restart(){
+    document.getElementById('nameInput').value = '';
+    document.getElementById('resScore').textContent = '0';
+    document.getElementById('resTime').textContent = '00:00';
+    progressMini.style.width = '0%';
+    topbar.classList.remove('show');
+    score = 0;
+    gameIdx = 0;
+    gameMarks = [];
+    gameLocked = false;
+    expressionHadMistake = false;
+    stopTimer();
+    showSlide(startSlide);
+  }
+
+  const CONFETTI_COLORS = [
+    '#3E7BFA','#7F6BE0','#F09B3D','#3DA673','#E06B9C',
+    '#7CCFA0','#A78BFF','#FFC857','#7CA3EF','#5DD5A0'
+  ];
+  function burstConfetti(x, y, count = 22){
+    for (let i = 0; i < count; i++){
+      const el = document.createElement('div');
+      el.className = 'confetti';
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 60 + Math.random() * 220;
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist - 110;
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+      const shape = Math.random();
+      if (shape < 0.4){ el.style.borderRadius = '50%'; }
+      else if (shape < 0.7){ el.style.borderRadius = '2px'; }
+      else {
+        el.style.borderRadius = '0';
+        el.style.clipPath = 'polygon(50% 0, 100% 100%, 0 100%)';
+      }
+      el.style.width = (6 + Math.random() * 8) + 'px';
+      el.style.height = (8 + Math.random() * 12) + 'px';
+      el.style.boxShadow = '0 0 10px ' + el.style.background;
+      el.style.setProperty('--dx', dx + 'px');
+      el.style.setProperty('--dy', dy + 'px');
+      el.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
+      el.style.setProperty('--dur', (1.05 + Math.random() * 0.85) + 's');
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2200);
+    }
+  }
+</script>
+
+</body>
+</html>
